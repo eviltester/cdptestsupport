@@ -111,7 +111,7 @@ public class InRequestResponse {
                 }
                 //System.out.println("threaded messages " + messages.size());
             try {
-                Thread.sleep(1000);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

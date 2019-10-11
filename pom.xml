@@ -6,7 +6,8 @@
 
     <groupId>uk.co.compendiumdev</groupId>
     <artifactId>cdptestsupport</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1-0</version>
+
 
     <build>
         <plugins>
