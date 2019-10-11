@@ -9,7 +9,7 @@ Using the Java Library:
 
 - https://github.com/kklisura/chrome-devtools-java-client
 
-This is still a prototype and doesn't pick up all events reliably yet.
+This is still a prototype.
 
 ## Monitoring Message Content
 
