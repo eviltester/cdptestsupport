@@ -61,37 +61,44 @@ public class InRequestResponse {
         final Page page = devToolsService.getPage();
         final Network network = devToolsService.getNetwork();
 
+        if(options.clearCache.equalsIgnoreCase("true")) {
+            System.out.println("Please Wait: Clearing Cache");
+            network.clearBrowserCache();
+            System.out.println("Cleared Cache");
+        }
+
         // Log requests with onRequestWillBeSent event handler.
         network.onRequestWillBeSent(
                 event ->{
                     if(event.getRequest().getHasPostData()){
-                        for(String entityType : config.keySet()){
-                            for(String entityValue : config.get(entityType)) {
-                                if (event.getRequest().getPostData().contains(entityValue)) {
-                                    String outputMessage = "Found " + entityType + " valued at: " + entityValue + " in request";
-                                    //System.out.println(outputMessage);
-                                    messages.add(outputMessage);
-                                    //System.out.println("request messages " + messages.size());
-                                }
-                            }
-                        }
+                        String body = event.getRequest().getPostData();
+                        findIn(config, body, event.getRequest().getUrl(),  "request", messages);
                     }
                 });
 
+
         network.onResponseReceived(
                 event ->{
-                    for(String entityType : config.keySet()){
-                        for(String entityValue : config.get(entityType)) {
-                            List<SearchMatch> matches = network.searchInResponseBody(event.getRequestId(), entityValue);
-                            if(matches.size()>0){
-                                //System.out.println(event.getResponse().getUrl());
-                                messages.add(event.getResponse().getUrl());
-                                //System.out.println("Found " + entityType + " valued at: " + entityValue + " in request");
-                                messages.add("Found " + entityType + " valued at: " + entityValue + " in request");
-                                //System.out.println("response messages " + messages.size());
-                            }
-                        }
-                    }
+                    String body = network.getResponseBody(event.getRequestId()).getBody();
+                    findIn(config, body, event.getResponse().getUrl(),  "response received", messages);
+                }
+        );
+
+        // TODO: toggle granularity of event checking with option e.g. --onData --onLoaded --onReceived
+//        network.onDataReceived(
+//                event ->{
+//                    if(event.getDataLength()>0){
+//                        String body = network.getResponseBody(event.getRequestId()).getBody();
+//                        findIn(config, body, "",  "data received", messages);
+//                    }
+//                }
+//        );
+
+        network.onLoadingFinished(
+                event ->{
+
+                    String body = network.getResponseBody(event.getRequestId()).getBody();
+                    findIn(config, body, "",  "loading finished", messages);
                 }
         );
 
@@ -117,6 +124,17 @@ public class InRequestResponse {
             }
         }
 
+    }
+
+    private static void findIn(final Map<String, Set<String>> config, final String body, final String url, final String inName, final ConcurrentLinkedQueue<String> messages) {
+        for (String entityType : config.keySet()) {
+            for (String entityValue : config.get(entityType)) {
+                if(body.contains(entityValue)) {
+                    messages.add(inName + ": " + url);
+                    messages.add("Found " + entityType + " valued at: " + entityValue + " in " + inName);
+                }
+            }
+        }
     }
 
     private static void printUsage(OptionsParser parser) {

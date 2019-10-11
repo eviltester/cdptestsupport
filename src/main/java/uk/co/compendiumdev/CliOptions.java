@@ -24,4 +24,13 @@ public class CliOptions extends OptionsBase {
             defaultValue = "https://eviltester.com"
     )
     public String defaultUrl;
+
+    @Option(
+            name = "clearcache",
+            help = "clear cache if true",
+            category = "config",
+            allowMultiple = false,
+            defaultValue = "false"
+    )
+    public String clearCache;
 }
