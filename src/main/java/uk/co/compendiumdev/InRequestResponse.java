@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class InRequestResponse {
 
@@ -22,6 +23,8 @@ public class InRequestResponse {
     // https://github.com/kklisura/chrome-devtools-java-client
 
     public static void main(String[] args) {
+
+        ConcurrentLinkedQueue<String> messages = new ConcurrentLinkedQueue<>();
 
         //File propertiesFileName =
         OptionsParser parser = OptionsParser.newOptionsParser(CliOptions.class);
@@ -65,7 +68,10 @@ public class InRequestResponse {
                         for(String entityType : config.keySet()){
                             for(String entityValue : config.get(entityType)) {
                                 if (event.getRequest().getPostData().contains(entityValue)) {
-                                    System.out.println("Found " + entityType + " valued at: " + entityValue + " in request");
+                                    String outputMessage = "Found " + entityType + " valued at: " + entityValue + " in request";
+                                    //System.out.println(outputMessage);
+                                    messages.add(outputMessage);
+                                    //System.out.println("request messages " + messages.size());
                                 }
                             }
                         }
@@ -78,8 +84,11 @@ public class InRequestResponse {
                         for(String entityValue : config.get(entityType)) {
                             List<SearchMatch> matches = network.searchInResponseBody(event.getRequestId(), entityValue);
                             if(matches.size()>0){
-                                System.out.println(event.getResponse().getUrl());
-                                System.out.println("Found " + entityType + " valued at: " + entityValue + " in request");
+                                //System.out.println(event.getResponse().getUrl());
+                                messages.add(event.getResponse().getUrl());
+                                //System.out.println("Found " + entityType + " valued at: " + entityValue + " in request");
+                                messages.add("Found " + entityType + " valued at: " + entityValue + " in request");
+                                //System.out.println("response messages " + messages.size());
                             }
                         }
                     }
@@ -94,6 +103,13 @@ public class InRequestResponse {
 
         // infinite loop to keep it all going - need some keyboard monitoring to exit
         while(true){
+                //System.out.println("thread messages " + messages.size());
+                String messageQ = messages.poll();
+                while(messageQ!=null){
+                    System.out.println(messageQ);
+                    messageQ = messages.poll();
+                }
+                //System.out.println("threaded messages " + messages.size());
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
