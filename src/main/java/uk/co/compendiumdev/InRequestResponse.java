@@ -3,7 +3,6 @@ package uk.co.compendiumdev;
 import com.github.kklisura.cdt.launch.ChromeLauncher;
 import com.github.kklisura.cdt.protocol.commands.Network;
 import com.github.kklisura.cdt.protocol.commands.Page;
-import com.github.kklisura.cdt.protocol.types.debugger.SearchMatch;
 import com.github.kklisura.cdt.services.ChromeDevToolsService;
 import com.github.kklisura.cdt.services.ChromeService;
 import com.github.kklisura.cdt.services.types.ChromeTab;
@@ -25,32 +24,11 @@ public class InRequestResponse {
     public static void main(String[] args) {
 
         ConcurrentLinkedQueue<String> messages = new ConcurrentLinkedQueue<>();
+        MonitorConfig config = new MonitorConfig();
 
-        //File propertiesFileName =
-        OptionsParser parser = OptionsParser.newOptionsParser(CliOptions.class);
-        parser.parseAndExitUponError(args);
-        CliOptions options = parser.getOptions(CliOptions.class);
-        if (options.configFile.trim().length()==0) {
-            printUsage(parser);
-            return;
-        }
-
-        File propertiesFile = new File(options.configFile);
-        if(!propertiesFile.exists()){
-            System.out.println("Cannot find properties file " + propertiesFile.getAbsolutePath());
-            return;
-        }
-
-        final Map<String, Set<String>> config = loadProperties(propertiesFile);
+        configure(config, args);
 
         System.out.println("Starting: Use Control+C to stop execution");
-
-        System.out.println("Monitoring For:");
-        for(String entityType : config.keySet()){
-            for(String entityValue : config.get(entityType)) {
-                    System.out.println(entityType + " valued at: " + entityValue);
-            }
-        }
 
         final ChromeLauncher launcher = new ChromeLauncher();
         final ChromeService chromeService = launcher.launch(false);
@@ -61,7 +39,7 @@ public class InRequestResponse {
         final Page page = devToolsService.getPage();
         final Network network = devToolsService.getNetwork();
 
-        if(options.clearCache.equalsIgnoreCase("true")) {
+        if(config.shouldClearCache()) {
             System.out.println("Please Wait: Clearing Cache");
             network.clearBrowserCache();
             System.out.println("Cleared Cache");
@@ -106,7 +84,7 @@ public class InRequestResponse {
         // Enable network events.
         network.enable();
 
-        page.navigate(options.defaultUrl);
+        page.navigate(config.getDefaultUrl());
 
         // infinite loop to keep it all going - need some keyboard monitoring to exit
         while(true){
@@ -126,9 +104,33 @@ public class InRequestResponse {
 
     }
 
-    private static void findIn(final Map<String, Set<String>> config, final String body, final String url, final String inName, final ConcurrentLinkedQueue<String> messages) {
-        for (String entityType : config.keySet()) {
-            for (String entityValue : config.get(entityType)) {
+    private static void configure(final MonitorConfig config, String[] args) {
+        //File propertiesFileName =
+        OptionsParser parser = OptionsParser.newOptionsParser(CliOptions.class);
+        parser.parseAndExitUponError(args);
+        CliOptions options = parser.getOptions(CliOptions.class);
+        // Validate all options
+        if (options.configFile.trim().length()==0) {
+            printUsage(parser);
+            return;
+        }
+
+        config.setFromOptions(options);
+
+        File propertiesFile = new File(config.getConfigFile());
+        if(!propertiesFile.exists()){
+            System.out.println("Cannot find properties file " + propertiesFile.getAbsolutePath());
+            return;
+        }
+
+        config.setFromPropertiesFile(propertiesFile);
+
+
+    }
+
+    private static void findIn(final MonitorConfig config, final String body, final String url, final String inName, final ConcurrentLinkedQueue<String> messages) {
+        for (String entityType : config.getEntityNames()) {
+            for (String entityValue : config.getEntityValues(entityType)) {
                 if(body.contains(entityValue)) {
                     messages.add(inName + ": " + url);
                     messages.add("Found " + entityType + " valued at: " + entityValue + " in " + inName);
@@ -143,35 +145,5 @@ public class InRequestResponse {
                 OptionsParser.HelpVerbosity.LONG));
     }
 
-    private static Map<String, Set<String>> loadProperties(File properties) {
 
-        Map<String, Set<String>> config = new HashMap<>();
-
-        Properties findWhat = new Properties();
-        try {
-            findWhat.load(new FileReader(properties));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        for(String name : findWhat.stringPropertyNames()){
-            String parsed[] = name.split("_");
-            String entityType = parsed[0];
-            if(entityType.trim().length()>0){
-                entityType = entityType.trim();
-                Set values;
-                if(config.containsKey(entityType)){
-                    values = config.get(entityType);
-                }else{
-                    values = new HashSet();
-                    config.put(entityType, values);
-                }
-                String value = findWhat.getProperty(name);
-                if(value != null & value.trim().length()>0){
-                    values.add(value);
-                }
-            }
-        }
-        return config;
-    }
 }
